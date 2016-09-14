@@ -50,11 +50,15 @@ object CucumberPlugin extends AutoPlugin {
   /** The path(s) to the features.                                */
   val features = SettingKey[List[String]]("cucumber-features")
 
+  val systemProperties = settingKey[Map[String, String]]("system properties")
+
   /** Whether or not to use monochrome output.                    */
   val monochrome = SettingKey[Boolean]("cucumber-monochrome")
 
   /** What plugin(s) to use.                                      */
-  val plugin = SettingKey[List[String]]("cucumber-plugins")
+  val plugin = SettingKey[List[Plugin]]("cucumber-plugins")
+
+  val cucumberTestReports = settingKey[File]("The location for test reports")
 
   /**
     * Where glue code (step definitions, hooks and plugins)
@@ -103,7 +107,12 @@ object CucumberPlugin extends AutoPlugin {
                                   glue.value,
                                   args.toList)
 
-      val j = JvmParameters(mainClass.value,p1) //::: p2)
+      val j = JvmParameters(
+        mainClass = mainClass.value,
+        classPath = p1,
+        systemProperties = systemProperties.value
+      )
+ //::: p2)
 
       beforeAll.value()
       runCucumber(j,p)(outputStrategy)
@@ -114,10 +123,22 @@ object CucumberPlugin extends AutoPlugin {
     dryRun := false,
     features := List("classpath:"),
     monochrome := false,
-    plugin := List.empty[String],
+    cucumberTestReports := new File(new File(target.value, "test-reports"), "cucumber"),
+    systemProperties := Map(),
+    plugin := {
+      import Plugin._
+      val cucumberDir = cucumberTestReports.value
+      IO.createDirectory(cucumberDir)
+      List(PrettyPlugin,
+        HtmlPlugin(cucumberDir),
+        JsonPlugin(new File(cucumberDir, "cucumber.json")),
+        JunitPlugin(new File(cucumberDir, "junit-report.xml"))
+      )
+    },
     beforeAll := noOp,
     afterAll := noOp
   )
+
 
   /**
     * Run Cucumber with the given parameters.
