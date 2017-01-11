@@ -2,16 +2,18 @@ name := "cucumber-runner"
 
 organization := "com.waioeka.sbt"
 
-scalaVersion := "2.12.0"
+scalaVersion := "2.12.1"
 
-version := "0.0.5"
+crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1")
+
+version := "0.0.6-SNAPSHOT"
 
 libraryDependencies ++= Seq (
         "info.cukes" % "cucumber-core" % "1.2.4",
         "info.cukes" %% "cucumber-scala" % "1.2.4",
         "info.cukes" % "cucumber-jvm" % "1.2.4",
         "info.cukes" % "cucumber-junit" % "1.2.4",
-        "org.scala-tools.testing" % "test-interface" % "0.5")
+        "org.scala-sbt" % "test-interface" % "1.0")
 
 pomIncludeRepository := { _ => false }
 

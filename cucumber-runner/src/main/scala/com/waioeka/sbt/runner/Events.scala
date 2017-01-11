@@ -25,25 +25,33 @@
 
 package com.waioeka.sbt.runner
 
-import org.scalatools.testing.{Result, Event}
+import sbt.testing._
 
 
-case class SuccessEvent(testName: String) extends Event {
+case class SuccessEvent(testName: String, override val fingerprint: Fingerprint) extends Event {
   val description = s"[CucumberPlugin] Test $testName passed."
-  val result = Result.Success
-  val error: Throwable = null
+  val fullyQualifiedName: String = description
+  val status = Status.Success
+  val duration: Long = -1
+  val throwable: OptionalThrowable = new OptionalThrowable
+  val selector: Selector = new TestSelector(testName)
 }
 
-case class FailureEvent(testName: String) extends Event {
-  val description = s"[CucumberPlugin] Test $testName failed " +
-                    "or undefined steps."
-  val result = Result.Failure
-  val error: Throwable = null
+case class FailureEvent(testName: String, override val fingerprint: Fingerprint) extends Event {
+  val description = s"[CucumberPlugin] Test $testName failed or undefined steps."
+  val fullyQualifiedName: String = description
+  val status = Status.Failure
+  val duration: Long = -1
+  val throwable: OptionalThrowable = new OptionalThrowable
+  val selector: Selector = new TestSelector(testName)
 }
 
 
-case class ErrorEvent(testName: String, error: Throwable) extends Event {
-  val description = "[CucumberPlugin] Error caught when running Cucumber " +
-                    s"$testName : ${error.getMessage}"
-  val result = Result.Error
+case class ErrorEvent(testName: String, error: Throwable, override val fingerprint: Fingerprint) extends Event {
+  val description = s"[CucumberPlugin] Error caught when running Cucumber $testName : ${error.getMessage}"
+  val fullyQualifiedName: String = description
+  val status = Status.Error
+  val duration: Long = -1
+  val throwable: OptionalThrowable = new OptionalThrowable(error)
+  val selector: Selector = new TestSelector(testName)
 }

@@ -26,8 +26,8 @@
 package com.waioeka.sbt.runner
 
 import cucumber.runtime.{Runtime, RuntimeOptions}
-import cucumber.runtime.io.{ResourceLoaderClassFinder, MultiLoader}
-import org.scalatools.testing.{Fingerprint, EventHandler, Runner2, Logger}
+import cucumber.runtime.io.{MultiLoader, ResourceLoaderClassFinder}
+import sbt.testing._
 
 import scala.util.Try
 
@@ -35,68 +35,65 @@ import scala.util.Try
   * CucumberFeatureRunner
   *   This class implements the Runner2 interface for running Cucumber tests.
   */
-class CucumberFeatureRunner(classLoader: ClassLoader, loggers: Array[Logger])
-  extends Runner2 {
+class CucumberFeatureRunner(classLoader: ClassLoader, override val args: Array[String], override val remoteArgs: Array[String]) extends Runner {
 
-  def logDebug(s: String) : Unit = loggers foreach(_ debug s)
-  def logError(s: String) : Unit = loggers foreach(_ debug s)
+  def tasks(taskDefs: Array[TaskDef]): Array[Task] = taskDefs.map{ taskDefIn =>
+    new Task {
+      val tags: Array[String] = Array.empty
+
+      val taskDef: TaskDef = taskDefIn
+
+      override def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
+        loggers foreach (_.debug("[CucumberFramework.testRunner] Creating Cucumber test runner."))
+        run(taskDef.fullyQualifiedName(), eventHandler, loggers, taskDef.fingerprint())
+        Array.empty
+      }
+    }
+  }
+
 
   /**
     * Run a Cucumber test.
     *
     * @param testName         the name of the test.
-    * @param fingerprint      the identification of the test (CucumberRunner).
     * @param eventHandler     the event handler.
-    * @param args             the test arguments.
     */
-  def run(
-            testName      : String,
-            fingerprint   : Fingerprint,
-            eventHandler  : EventHandler,
-            args          : Array[String]) : Unit = {
+  def run(testName: String, eventHandler : EventHandler, loggers: Array[Logger], fingerprint: Fingerprint) : Unit = {
+
+    def logDebug(s: String) : Unit = loggers foreach(_ debug s)
 
     Try {
-
-      val arguments =
-        List("--glue","") :::
-          List("--plugin", "pretty") :::
-            List("--plugin", "html:html") :::
-              List("--plugin", "json:json") :::
-                List("classpath:")
-
-      execute(arguments, classLoader) match {
+      execute( classLoader) match {
         case 0 =>
-          logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName " +
-            " completed successfully.")
-          eventHandler.handle(SuccessEvent(testName))
+          logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName completed successfully.")
+          eventHandler.handle(SuccessEvent(testName, fingerprint))
         case _ =>
-          logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName " +
-            " failed.")
-          eventHandler.handle(FailureEvent(testName))
+          logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName  failed.")
+          eventHandler.handle(FailureEvent(testName, fingerprint))
       }
     }.recover {
       case t: Throwable =>
-          eventHandler.handle(ErrorEvent(testName,t))
+          eventHandler.handle(ErrorEvent(testName,t, fingerprint))
     }.get
   }
 
   /**
     * Create the Cucumber Runtime and execute the test.
 
-    * @param arguments	 the test and Cucumber arguments.
     * @param classLoader the class loader for the Runtime.
     * @return the exit status of the Cucumber Runtime.
     */
-  def execute(
-           arguments: List[String],
-           classLoader: ClassLoader
-         )
+  def execute(classLoader: ClassLoader)
   : Int = {
-
+    val arguments =
+      List("--glue","") :::
+      List("--plugin", "pretty") :::
+      List("--plugin", "html:html") :::
+      List("--plugin", "json:json") :::
+      List("classpath:")
     import scala.collection.JavaConverters._
-    val arrayList : java.util.ArrayList[String] =
-      new java.util.ArrayList[String](arguments.asJava)
-    val runtimeOptions = new RuntimeOptions(arrayList)
+
+    val runtimeOptions = new RuntimeOptions(arguments.asJava)
     val resourceLoader = new MultiLoader(classLoader)
     val classFinder = new ResourceLoaderClassFinder(resourceLoader,classLoader)
     val runtime = new Runtime(
@@ -108,5 +105,7 @@ class CucumberFeatureRunner(classLoader: ClassLoader, loggers: Array[Logger])
     runtime.printSummary()
     runtime.exitStatus()
   }
+
+  override def done(): String = ""
 
 }

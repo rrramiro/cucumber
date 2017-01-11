@@ -25,7 +25,7 @@
 
 package com.waioeka.sbt.runner
 
-import org.scalatools.testing.SubclassFingerprint
+import sbt.testing._
 
 /**
   * CucumberFingerprint
@@ -38,5 +38,7 @@ object CucumberFingerprint extends SubclassFingerprint {
   val isModule = false
 
   /** The name of the type that designates a test.*/
-  val superClassName = classOf[CucumberRunner].getName
+  val superclassName: String = classOf[CucumberRunner].getName
+
+  val requireNoArgConstructor: Boolean = false
 }
