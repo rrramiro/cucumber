@@ -57,7 +57,7 @@ lazy val cucumberRunner = (project in file("cucumber-runner")).settings(
 
   organization := "com.waioeka.sbt",
 
-scalaVersion := "2.12.1",
+scalaVersion := "2.11.8",
 
 crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1"),
 
@@ -106,9 +106,8 @@ publishTo := {
   else
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 },
-CucumberPlugin.glue := "com/waioeka/sbt/",
 
-testFrameworks += new TestFramework("com.waioeka.sbt.runner")
+testFrameworks += new TestFramework("com.waioeka.sbt.runner.CucumberFramework")
 
-).enablePlugins(CucumberPlugin)
+)
 
