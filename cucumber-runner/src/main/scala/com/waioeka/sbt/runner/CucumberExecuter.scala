@@ -19,7 +19,7 @@ object CucumberExecuter {
     val resourceLoader = new MultiLoader(classLoader)
     val runtime = new Runtime(resourceLoader, new ResourceLoaderClassFinder(resourceLoader,classLoader), classLoader, new RuntimeOptions(arguments.asJava))
     runtime.run()
-    runtime.printSummary()
+    //runtime.printSummary()
     runtime.exitStatus()
   }
 }

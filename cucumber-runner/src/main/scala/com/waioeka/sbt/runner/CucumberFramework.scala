@@ -63,8 +63,8 @@ class CucumberFramework extends Framework {
     private val arguments =
       Seq("--glue", "") ++
         Seq("--plugin", "pretty") ++
-        Seq("--plugin", "html:target/html") ++
-        Seq("--plugin", "json:target/json") ++
+        Seq("--plugin", "html:target/test-reports/cucumber/html") ++
+        Seq("--plugin", "json:target/test-reports/cucumber/json") ++
         Seq("classpath:")
 
     def tasks(taskDefs: Array[TaskDef]): Array[Task] = taskDefs.map { taskDefIn =>

@@ -25,6 +25,8 @@
 
 package com.waioeka.sbt
 
+import java.io.File
+
 import sbt._
 import Keys._
 import sbt.complete.DefaultParsers._
@@ -32,10 +34,10 @@ import sbt.complete.DefaultParsers._
 import scala.util.Try
 
 /**
-  * CucumberPlugin
-  *   This class implements the AutoPlugin interface. The Cucumber plugin
-  *   will invoke Cucumber for Scala.
-  */
+ * CucumberPlugin
+ *   This class implements the AutoPlugin interface. The Cucumber plugin
+ *   will invoke Cucumber for Scala.
+ */
 object CucumberPlugin extends AutoPlugin {
 
   /** TaskKey for the cucumber plugin.                            */
@@ -61,26 +63,26 @@ object CucumberPlugin extends AutoPlugin {
   val cucumberTestReports = settingKey[File]("The location for test reports")
 
   /**
-    * Where glue code (step definitions, hooks and plugins)
-    * are loaded from.
-    */
+   * Where glue code (step definitions, hooks and plugins)
+   * are loaded from.
+   */
   val glue = SettingKey[String]("cucumber-glue")
 
   /** A beforeAll hook for Cucumber tests.                      */
-  val beforeAll = SettingKey[()=>Unit]("cucumber-before")
+  val beforeAll = SettingKey[() => Unit]("cucumber-before")
 
   /** An afterAll hook for Cucumber tests.                      */
-  val afterAll = SettingKey[()=>Unit]("cucumber-after")
+  val afterAll = SettingKey[() => Unit]("cucumber-after")
 
   /** Default hook for beforeAll, afterAll.                     */
-  private def noOp() : Unit = {}
+  private def noOp(): Unit = {}
 
   /**
-    * Defines the project settings for this plugin.
-    *
-    * @return a Sequence of SBT settings.
-    */
-  override def projectSettings : Seq[Setting[_]] = Seq (
+   * Defines the project settings for this plugin.
+   *
+   * @return a Sequence of SBT settings.
+   */
+  override def projectSettings: Seq[Setting[_]] = Seq(
 
     testFrameworks +=
       new TestFramework("com.waioeka.sbt.runner.CucumberFramework"),
@@ -92,15 +94,16 @@ object CucumberPlugin extends AutoPlugin {
       val outputStrategy = LoggedOutput(streams.value.log)
 
       val p1 = ((fullClasspath in Test)
-                map { cp => cp.toList.map(_.data)}).value
+        map { cp => cp.toList.map(_.data) }).value
 
       val p = CucumberParameters(
-                                  dryRun.value,
-                                  features.value,
-                                  monochrome.value,
-                                  plugin.value,
-                                  glue.value,
-                                  args.toList)
+        dryRun.value,
+        features.value,
+        monochrome.value,
+        plugin.value,
+        glue.value,
+        args.toList
+      )
 
       val j = JvmParameters(
         mainClass = mainClass.value,
@@ -108,12 +111,11 @@ object CucumberPlugin extends AutoPlugin {
         systemProperties = systemProperties.value
       )
 
-
       beforeAll.value()
-      val result = runCucumber(j,p)(outputStrategy)
+      val result = runCucumber(j, p)(outputStrategy)
       afterAll.value()
       if (result != 0) {
-          throw new IllegalStateException("Cucumber did not succeed and returned error =" + result)
+        throw new IllegalStateException("Cucumber did not succeed and returned error =" + result)
       }
     },
 
@@ -127,7 +129,8 @@ object CucumberPlugin extends AutoPlugin {
       import Plugin._
       val cucumberDir = cucumberTestReports.value
       IO.createDirectory(cucumberDir)
-      List(PrettyPlugin,
+      List(
+        PrettyPlugin,
         HtmlPlugin(cucumberDir),
         JsonPlugin(new File(cucumberDir, "cucumber.json")),
         JunitPlugin(new File(cucumberDir, "junit-report.xml"))
@@ -137,20 +140,21 @@ object CucumberPlugin extends AutoPlugin {
     afterAll := noOp
   )
 
-
   /**
-    * Run Cucumber with the given parameters.
-    *
-    * @param jParams the Jvm parameters.
-    * @param cParams the Cucumber parameters
-    */
-  def runCucumber(  jParams : JvmParameters,
-                    cParams: CucumberParameters)(
-                    outputStrategy: OutputStrategy
-                  ) : Int = {
-    val cucumber = Cucumber(jParams,cParams)
+   * Run Cucumber with the given parameters.
+   *
+   * @param jParams the Jvm parameters.
+   * @param cParams the Cucumber parameters
+   */
+  def runCucumber(
+    jParams: JvmParameters,
+    cParams: CucumberParameters
+  )(
+    outputStrategy: OutputStrategy
+  ): Int = {
+    val cucumber = Cucumber(jParams, cParams)
     Try {
-       cucumber.run(outputStrategy)
+      cucumber.run(outputStrategy)
     }.recover {
       case t: Throwable =>
         println(s"[CucumberPlugin] Caught exception: ${t.getMessage}")
