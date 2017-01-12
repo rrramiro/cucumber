@@ -33,9 +33,16 @@ import scala.util.Try
 
 /**
   * CucumberFeatureRunner
-  *   This class implements the Runner2 interface for running Cucumber tests.
+  *   This class implements the Runner interface for running Cucumber tests.
   */
 class CucumberFeatureRunner(classLoader: ClassLoader, override val args: Array[String], override val remoteArgs: Array[String]) extends Runner {
+
+  private val arguments =
+    Seq("--glue", "") ++
+    Seq("--plugin", "pretty") ++
+    Seq("--plugin", "html:html") ++
+    Seq("--plugin", "json:json") ++
+    Seq("classpath:")
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = taskDefs.map{ taskDefIn =>
     new Task {
@@ -44,63 +51,39 @@ class CucumberFeatureRunner(classLoader: ClassLoader, override val args: Array[S
       val taskDef: TaskDef = taskDefIn
 
       override def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-        loggers foreach (_.debug("[CucumberFramework.testRunner] Creating Cucumber test runner."))
-        run(taskDef.fullyQualifiedName(), eventHandler, loggers, taskDef.fingerprint())
+        def logDebug(s: String) : Unit = loggers foreach{_ debug s}
+
+        logDebug("[CucumberFramework.testRunner] Creating Cucumber test runner.")
+        val testName = taskDef.fullyQualifiedName()
+        Try {
+          executeCucumber(arguments, classLoader) match {
+            case 0 =>
+              logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName completed successfully.")
+              eventHandler.handle(SuccessEvent(testName, taskDef.fingerprint()))
+            case _ =>
+              logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName  failed.")
+              eventHandler.handle(FailureEvent(testName, taskDef.fingerprint()))
+          }
+        }.recover {
+          case t: Throwable =>
+            eventHandler.handle(ErrorEvent(testName,t, taskDef.fingerprint()))
+        }.get
         Array.empty
       }
     }
   }
 
-
-  /**
-    * Run a Cucumber test.
-    *
-    * @param testName         the name of the test.
-    * @param eventHandler     the event handler.
-    */
-  def run(testName: String, eventHandler : EventHandler, loggers: Array[Logger], fingerprint: Fingerprint) : Unit = {
-
-    def logDebug(s: String) : Unit = loggers foreach(_ debug s)
-
-    Try {
-      execute( classLoader) match {
-        case 0 =>
-          logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName completed successfully.")
-          eventHandler.handle(SuccessEvent(testName, fingerprint))
-        case _ =>
-          logDebug(s"[CucumberFeatureRunner.run] Cucumber test $testName  failed.")
-          eventHandler.handle(FailureEvent(testName, fingerprint))
-      }
-    }.recover {
-      case t: Throwable =>
-          eventHandler.handle(ErrorEvent(testName,t, fingerprint))
-    }.get
-  }
-
   /**
     * Create the Cucumber Runtime and execute the test.
-
+    *
+    * @param arguments cucumber arguments
     * @param classLoader the class loader for the Runtime.
     * @return the exit status of the Cucumber Runtime.
     */
-  def execute(classLoader: ClassLoader)
-  : Int = {
-    val arguments =
-      List("--glue","") :::
-      List("--plugin", "pretty") :::
-      List("--plugin", "html:html") :::
-      List("--plugin", "json:json") :::
-      List("classpath:")
+  def executeCucumber(arguments: Seq[String], classLoader: ClassLoader): Int = {
     import scala.collection.JavaConverters._
-
-    val runtimeOptions = new RuntimeOptions(arguments.asJava)
     val resourceLoader = new MultiLoader(classLoader)
-    val classFinder = new ResourceLoaderClassFinder(resourceLoader,classLoader)
-    val runtime = new Runtime(
-                              resourceLoader,
-                              classFinder,
-                              classLoader,
-                              runtimeOptions)
+    val runtime = new Runtime(resourceLoader, new ResourceLoaderClassFinder(resourceLoader,classLoader), classLoader, new RuntimeOptions(arguments.asJava))
     runtime.run()
     runtime.printSummary()
     runtime.exitStatus()

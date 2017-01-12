@@ -26,7 +26,6 @@
 package com.waioeka.sbt.runner
 
 import sbt.testing._
-//import org.scalatools.testing.{Runner2, Logger, Fingerprint, Framework}
 
 /**
   * CucumberFramework

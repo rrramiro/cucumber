@@ -27,31 +27,34 @@ package com.waioeka.sbt.runner
 
 import sbt.testing._
 
+trait CucumberEvent extends Event{
+  val description: String
+  val testName: String
+  val error: Option[Throwable]
+  val duration: Long = -1
+  def fullyQualifiedName: String = description
+  def throwable: OptionalThrowable = error match {
+    case Some(e) => new OptionalThrowable(e)
+    case _ => new OptionalThrowable
+  }
+  def selector: Selector = new TestSelector(testName)
+}
 
-case class SuccessEvent(testName: String, override val fingerprint: Fingerprint) extends Event {
+case class SuccessEvent(testName: String, override val fingerprint: Fingerprint) extends CucumberEvent {
   val description = s"[CucumberPlugin] Test $testName passed."
-  val fullyQualifiedName: String = description
   val status = Status.Success
-  val duration: Long = -1
-  val throwable: OptionalThrowable = new OptionalThrowable
-  val selector: Selector = new TestSelector(testName)
+  val error = None
 }
 
-case class FailureEvent(testName: String, override val fingerprint: Fingerprint) extends Event {
+case class FailureEvent(testName: String, override val fingerprint: Fingerprint) extends CucumberEvent {
   val description = s"[CucumberPlugin] Test $testName failed or undefined steps."
-  val fullyQualifiedName: String = description
   val status = Status.Failure
-  val duration: Long = -1
-  val throwable: OptionalThrowable = new OptionalThrowable
-  val selector: Selector = new TestSelector(testName)
+  val error = None
 }
 
 
-case class ErrorEvent(testName: String, error: Throwable, override val fingerprint: Fingerprint) extends Event {
-  val description = s"[CucumberPlugin] Error caught when running Cucumber $testName : ${error.getMessage}"
-  val fullyQualifiedName: String = description
+case class ErrorEvent(testName: String, errorIn: Throwable, override val fingerprint: Fingerprint) extends CucumberEvent {
+  val description = s"[CucumberPlugin] Error caught when running Cucumber $testName : ${errorIn.getMessage}"
   val status = Status.Error
-  val duration: Long = -1
-  val throwable: OptionalThrowable = new OptionalThrowable(error)
-  val selector: Selector = new TestSelector(testName)
+  val error = Some(errorIn)
 }
