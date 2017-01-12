@@ -52,8 +52,7 @@ case class FailureEvent(testName: String, override val fingerprint: Fingerprint)
   val error = None
 }
 
-case class ErrorEvent(testName: String, errorIn: Throwable, override val fingerprint: Fingerprint) extends CucumberEvent {
-  val description = s"[CucumberPlugin] Error caught when running Cucumber $testName : ${errorIn.getMessage}"
+case class ErrorEvent(testName: String, override val fingerprint: Fingerprint, error: Option[Throwable] = None) extends CucumberEvent {
+  val description = s"[CucumberPlugin] Error caught when running Cucumber $testName : ${error.map{_.getMessage}.getOrElse("")}"
   val status = Status.Error
-  val error = Some(errorIn)
 }

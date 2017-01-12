@@ -27,20 +27,73 @@ package com.waioeka.sbt.runner
 
 import sbt.testing._
 
+import scala.util.Try
+
 /**
-  * CucumberFramework
-  *
-  *   An implementation of the Framework interface for Cucumber feature file
-  *   tests.
-  */
-class CucumberFramework  extends Framework {
+ * CucumberFramework
+ *
+ *   An implementation of the Framework interface for Cucumber feature file
+ *   tests.
+ */
+class CucumberFramework extends Framework {
   /** The name of the test framework. */
   val name = "cucumber"
 
-  /** The array of Cucumber fingerprint(s). */
-  val fingerprints: Array[Fingerprint] = Array(CucumberFingerprint)
+  /**
+    *  The array of Cucumber fingerprint(s).
+    *   Identifies a test class that has a specific type of ancestor.
+    *   For Cucumber tests in this plugin, this is defined by the
+    *   'CucumberRunner' trait.
+    */
+  val fingerprints: Array[Fingerprint] = Array(new SubclassFingerprint {
+    /**  Whether a test is a module or a class. */
+    val isModule = false
 
-  def runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader): Runner = {
-    new CucumberFeatureRunner(testClassLoader, args, remoteArgs)
+    /** The name of the type that designates a test.*/
+    val superclassName: String = classOf[CucumberRunner].getName
+
+    val requireNoArgConstructor: Boolean = false
+  })
+
+  def runner(argsIn: Array[String], remoteArgsIn: Array[String], testClassLoader: ClassLoader): Runner = new Runner {
+    val done: String = ""
+    val args: Array[String] = argsIn
+    val remoteArgs: Array[String] = remoteArgsIn
+
+    private val arguments =
+      Seq("--glue", "") ++
+        Seq("--plugin", "pretty") ++
+        Seq("--plugin", "html:target/html") ++
+        Seq("--plugin", "json:target/json") ++
+        Seq("classpath:")
+
+    def tasks(taskDefs: Array[TaskDef]): Array[Task] = taskDefs.map { taskDefIn =>
+      new Task {
+        val tags: Array[String] = Array.empty
+
+        val taskDef: TaskDef = taskDefIn
+
+        override def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
+          def logDebug(s: String): Unit = loggers foreach { _ debug s }
+
+          logDebug("[CucumberFramework.testRunner] Creating Cucumber test runner.")
+          val testName = taskDef.fullyQualifiedName()
+          Try {
+            CucumberExecuter.executeCucumber(arguments, testClassLoader) match {
+              case 0 =>
+                logDebug(s"[CucumberFramework.run] Cucumber test $testName completed successfully.")
+                eventHandler.handle(SuccessEvent(testName, taskDef.fingerprint()))
+              case _ =>
+                logDebug(s"[CucumberFramework.run] Cucumber test $testName  failed.")
+                eventHandler.handle(FailureEvent(testName, taskDef.fingerprint()))
+            }
+          }.recover {
+            case t: Throwable =>
+              eventHandler.handle(ErrorEvent(testName, taskDef.fingerprint(), Some(t)))
+          }.get
+          Array.empty
+        }
+      }
+    }
   }
 }
